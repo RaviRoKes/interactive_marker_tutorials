@@ -1,0 +1,11 @@
+
+<?xml version="1.0"?>
+<library path="basic_controls">
+  <class name="BasicControlsNode"
+         type="interactive_marker_tutorials::BasicControlsNode"
+         base_class_type="rclcpp_components::Node">
+    <description>
+      RViz panel for creating and managing frames for automated machine-tending systems, with interactive markers for cylinders and boxes.
+    </description>
+  </class>
+</library>
