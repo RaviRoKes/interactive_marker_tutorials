@@ -28,6 +28,9 @@ find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(rviz_common REQUIRED)
+find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
+# find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 # Export dependencies
 ament_export_dependencies(
@@ -39,6 +42,7 @@ ament_export_dependencies(
   "tf2_geometry_msgs"
   "tf2_ros"
   "visualization_msgs"
+  "rviz_common"
 )
 
 # Add basic_controls as a shared library
@@ -49,6 +53,11 @@ target_include_directories(basic_controls PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
+# include_directories($ENV{AMENT_PREFIX_PATH}/include)
+include_directories(
+  ${rviz_common_INCLUDE_DIRS}
+)
+
 
 # Link dependencies
 ament_target_dependencies(basic_controls
@@ -60,6 +69,8 @@ ament_target_dependencies(basic_controls
   "tf2_geometry_msgs"
   "tf2_ros"
   "visualization_msgs"
+  "Qt5Core"
+  "Qt5Widgets"
 )
 
 # Register the node as a component
