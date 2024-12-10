@@ -29,29 +29,24 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(rviz_common REQUIRED)
+find_package(Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
 # find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
-# Export dependencies
-ament_export_dependencies(
-  "interactive_markers"
-  "pluginlib"
-  "rclcpp"
-  "rclcpp_components"
-  "tf2"
-  "tf2_geometry_msgs"
-  "tf2_ros"
-  "visualization_msgs"
-  "rviz_common"
+
+# Automoc and moc((meta objects complier) file generation
+set(CMAKE_AUTOMOC ON)
+qt5_wrap_cpp(MOC_FILES
+  include/interactive_marker_tutorials/basic_controls.hpp
 )
 
 # Add basic_controls as a shared library
-add_library(basic_controls SHARED src/basic_controls.cpp)
+add_library(basic_controls SHARED src/basic_controls.cpp ${MOC_FILES})
 
 # Include the header directory
 target_include_directories(basic_controls PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>
+  $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
 )
 # include_directories($ENV{AMENT_PREFIX_PATH}/include)
 include_directories(
@@ -61,37 +56,45 @@ include_directories(
 
 # Link dependencies
 ament_target_dependencies(basic_controls
-  "interactive_markers"
-  "pluginlib"
-  "rclcpp"
-  "rclcpp_components"
-  "tf2"
-  "tf2_geometry_msgs"
-  "tf2_ros"
-  "visualization_msgs"
-  "Qt5Core"
-  "Qt5Widgets"
+  interactive_markers
+  rclcpp
+  rclcpp_components
+  pluginlib
+  rviz_common
+  rviz_rendering
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
+  geometry_msgs
+  visualization_msgs
+  Qt5Widgets
 )
+# Link Qt5 libraries
+target_link_libraries(basic_controls Qt5::Widgets)
 
 # Register the node as a component
 rclcpp_components_register_nodes(basic_controls "interactive_marker_tutorials::BasicControlsNode")
 
-# Install targets
-install(TARGETS
-  basic_controls
-  DESTINATION lib/${PROJECT_NAME}
-)
-
 # Install header files
 install(DIRECTORY include/
-  DESTINATION include
+  DESTINATION include/interactive_marker_tutorials
+)
+# Install the library
+install(TARGETS basic_controls
+  EXPORT export_interactive_marker_tutorials
+  RUNTIME DESTINATION bin
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
 )
 
 # Install plugin XML file
-install(FILES
-  basic_controls.xml
+install(FILES basic_controls.xml
   DESTINATION share/${PROJECT_NAME}
 )
+# Export plugin description and directories
+ament_export_include_directories(include)
+ament_export_targets(export_interactive_marker_tutorials HAS_LIBRARY_TARGET)
+pluginlib_export_plugin_description_file(rviz_common basic_controls.xml)
 
 # Testing
 if(BUILD_TESTING)

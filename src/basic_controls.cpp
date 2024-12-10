@@ -33,6 +33,11 @@ namespace interactive_marker_tutorials
   {
     basic_controls_node_ = node;
   }
+  // Destructor definition for BasicControlsPanel
+  BasicControlsPanel::~BasicControlsPanel()
+  {
+    // Optional: Add any custom cleanup code if needed (e.g., deleting dynamic resources)
+  }
 
   // Constructor for BasicControlsNode
   BasicControlsNode::BasicControlsNode(const rclcpp::NodeOptions &options)
@@ -215,4 +220,4 @@ namespace interactive_marker_tutorials
 }
 
 #include <pluginlib/class_list_macros.hpp>
-PLUGINLIB_EXPORT_CLASS(interactive_marker_tutorials::BasicControlsNode, rclcpp::Node)
+PLUGINLIB_EXPORT_CLASS(interactive_marker_tutorials::BasicControlsPanel, rviz_common::Panel)
