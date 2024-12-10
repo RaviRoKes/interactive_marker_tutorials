@@ -1,4 +1,6 @@
 #include "interactive_marker_tutorials/basic_controls.hpp"
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+
 
 #include <sstream>
 
@@ -8,7 +10,7 @@ namespace interactive_marker_tutorials
     BasicControlsNode::BasicControlsNode(const rclcpp::NodeOptions &options)
         : rclcpp::Node("basic_controls", options), menu_handler_()
     {
-        //creates a unique pointer for an InteractiveMarkerServer class
+        // creates a unique pointer for an InteractiveMarkerServer class
         server_ = std::make_unique<interactive_markers::InteractiveMarkerServer>(
             "basic_controls",
             get_node_base_interface(),
@@ -26,7 +28,6 @@ namespace interactive_marker_tutorials
         frame_timer_ = create_wall_timer(
             std::chrono::milliseconds(10), std::bind(&BasicControlsNode::frameCallback, this));
     }
-
     void BasicControlsNode::frameCallback()
     {
         static uint32_t counter = 0;
@@ -36,24 +37,38 @@ namespace interactive_marker_tutorials
             tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(shared_from_this());
         }
 
-        tf2::TimePoint tf_time_point(std::chrono::nanoseconds(this->get_clock()->now().nanoseconds()));
+        // Get current time using rclcpp::Time
+        rclcpp::Time time_point = this->get_clock()->now();
 
-        tf2::Stamped<tf2::Transform> transform;
-        transform.stamp_ = tf_time_point;
-        transform.frame_id_ = "base_link";
-        transform.setOrigin(tf2::Vector3(0.0, 0.0, sin(static_cast<double>(counter) / 140.0) * 2.0));
-        transform.setRotation(tf2::Quaternion(0.0, 0.0, 0.0, 1.0));
-
-        geometry_msgs::msg::TransformStamped transform_msg = tf2::toMsg(transform);
+        // Create a TransformStamped object directly
+        geometry_msgs::msg::TransformStamped transform_msg; // In ROS 2, to use tf2::Stamped with transforms, you typically need to use the geometry_msgs::msg::TransformStamped directly
+        transform_msg.header.stamp = time_point;            // Use rclcpp::Time
+        transform_msg.header.frame_id = "base_link";
         transform_msg.child_frame_id = "moving_frame";
+        transform_msg.transform.translation.x = 0.0;
+        transform_msg.transform.translation.y = 0.0;
+        transform_msg.transform.translation.z = sin(static_cast<double>(counter) / 140.0) * 2.0;
+        transform_msg.transform.rotation.x = 0.0;
+        transform_msg.transform.rotation.y = 0.0;
+        transform_msg.transform.rotation.z = 0.0;
+        transform_msg.transform.rotation.w = 1.0;
+
+        // Send the transform for moving frame
         tf_broadcaster_->sendTransform(transform_msg);
 
-        transform.setOrigin(tf2::Vector3(0.0, 0.0, 0.0));
+        // Create another transform for rotating frame
+        transform_msg.child_frame_id = "rotating_frame";
+        transform_msg.transform.translation.x = 0.0;
+        transform_msg.transform.translation.y = 0.0;
+        transform_msg.transform.translation.z = 0.0;
+
+        // Use tf2 to create a Quaternion for rotation
         tf2::Quaternion quat;
         quat.setRPY(0.0, static_cast<double>(counter) / 140.0, 0.0);
-        transform.setRotation(quat);
-        transform_msg = tf2::toMsg(transform);
-        transform_msg.child_frame_id = "rotating_frame";
+
+        // Convert tf2::Quaternion to geometry_msgs::msg::Quaternion
+        transform_msg.transform.rotation = tf2::toMsg(quat);
+        // Send the transform for rotating frame
         tf_broadcaster_->sendTransform(transform_msg);
 
         counter++;
