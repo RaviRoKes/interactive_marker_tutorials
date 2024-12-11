@@ -96,6 +96,23 @@ ament_export_include_directories(include)
 ament_export_targets(export_interactive_marker_tutorials HAS_LIBRARY_TARGET)
 pluginlib_export_plugin_description_file(rviz_common basic_controls.xml)
 
+# Add standalone test executable
+add_executable(basic_controls_test src/basic_controls_test.cpp)
+
+# Link the test executable to necessary libraries
+ament_target_dependencies(basic_controls_test
+  rclcpp
+  interactive_markers
+  visualization_msgs
+)
+# Link against the basic_controls library
+target_link_libraries(basic_controls_test basic_controls)
+
+# Install the test executable
+install(TARGETS basic_controls_test
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+)
+
 # Testing
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

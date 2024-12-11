@@ -15,6 +15,13 @@ namespace interactive_marker_tutorials
     button_ = new QPushButton("Create Marker", this);
     connect(button_, &QPushButton::clicked, this, &BasicControlsPanel::onButtonClicked);
 
+    // Create and link the node
+    basic_controls_node_ = new BasicControlsNode(rclcpp::NodeOptions());
+    if (basic_controls_node_)
+    {
+      RCLCPP_INFO(rclcpp::get_logger("BasicControlsPanel"), "Node initialized successfully.");
+    }
+
     QVBoxLayout *layout = new QVBoxLayout;
     layout->addWidget(button_);
     setLayout(layout);
@@ -25,14 +32,28 @@ namespace interactive_marker_tutorials
     // Ensure that the node is set and call the marker creation method
     if (basic_controls_node_)
     {
+      RCLCPP_INFO(rclcpp::get_logger("BasicControlsPanel"), "Button clicked: Creating 6Dof Marker");
       basic_controls_node_->make6DofMarker(true, 0, tf2::Vector3(0.0, 0.0, 0.0), true);
+    }
+    else
+    {
+      RCLCPP_WARN(rclcpp::get_logger("BasicControlsPanel"), "BasicControlsNode is not set.");
     }
   }
 
   void BasicControlsPanel::setBasicControlsNode(BasicControlsNode *node)
   {
     basic_controls_node_ = node;
+    if (basic_controls_node_)
+    {
+      RCLCPP_INFO(rclcpp::get_logger("BasicControlsPanel"), "BasicControlsNode successfully linked to BasicControlsPanel.");
+    }
+    else
+    {
+      RCLCPP_WARN(rclcpp::get_logger("BasicControlsPanel"), "Failed to link BasicControlsNode to BasicControlsPanel.");
+    }
   }
+
   // Destructor definition for BasicControlsPanel
   BasicControlsPanel::~BasicControlsPanel()
   {
@@ -147,6 +168,7 @@ namespace interactive_marker_tutorials
 
     // Add the marker to the server
     server_->insert(int_marker);
+    // Marker callback
     server_->setCallback(int_marker.name, std::bind(&BasicControlsNode::processFeedback, this, std::placeholders::_1));
 
     // Apply the changes to the marker server
@@ -154,7 +176,6 @@ namespace interactive_marker_tutorials
 
     RCLCPP_INFO(get_logger(), "6Dof Marker created successfully.");
   }
-
   void BasicControlsNode::frameCallback()
   {
     static uint32_t counter = 0;
@@ -164,25 +185,36 @@ namespace interactive_marker_tutorials
       tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(shared_from_this());
     }
 
-    tf2::TimePoint tf_time_point(std::chrono::nanoseconds(this->get_clock()->now().nanoseconds()));
-
-    tf2::Stamped<tf2::Transform> transform;
-    transform.stamp_ = tf_time_point;
-    transform.frame_id_ = "base_link";
-    transform.setOrigin(tf2::Vector3(0.0, 0.0, sin(static_cast<double>(counter) / 140.0) * 2.0));
-    transform.setRotation(tf2::Quaternion(0.0, 0.0, 0.0, 1.0));
-
     geometry_msgs::msg::TransformStamped transform_msg;
-    transform_msg = tf2::toMsg(transform);
+
+    // First transform: "base_link" -> "moving_frame"
+    transform_msg.header.stamp = this->get_clock()->now();
+    transform_msg.header.frame_id = "base_link";
     transform_msg.child_frame_id = "moving_frame";
+    transform_msg.transform.translation.x = 0.0;
+    transform_msg.transform.translation.y = 0.0;
+    transform_msg.transform.translation.z = sin(static_cast<double>(counter) / 140.0) * 2.0;
+    transform_msg.transform.rotation.w = 1.0;
+    transform_msg.transform.rotation.x = 0.0;
+    transform_msg.transform.rotation.y = 0.0;
+    transform_msg.transform.rotation.z = 0.0;
+
+    RCLCPP_INFO(get_logger(), "Broadcasting TF: %s -> %s",
+                transform_msg.header.frame_id.c_str(), transform_msg.child_frame_id.c_str());
+
     tf_broadcaster_->sendTransform(transform_msg);
 
-    transform.setOrigin(tf2::Vector3(0.0, 0.0, 0.0));
+    // Second transform: "base_link" -> "rotating_frame"
     tf2::Quaternion quat;
     quat.setRPY(0.0, static_cast<double>(counter) / 140.0, 0.0);
-    transform.setRotation(quat);
-    transform_msg = tf2::toMsg(transform);
+    transform_msg.header.stamp = this->get_clock()->now();
+    transform_msg.header.frame_id = "base_link";
     transform_msg.child_frame_id = "rotating_frame";
+    transform_msg.transform.translation.x = 0.0;
+    transform_msg.transform.translation.y = 0.0;
+    transform_msg.transform.translation.z = 0.0;
+    transform_msg.transform.rotation = tf2::toMsg(quat);
+
     tf_broadcaster_->sendTransform(transform_msg);
 
     counter++;
