@@ -13,6 +13,7 @@
 #include "visualization_msgs/msg/interactive_marker.hpp"
 #include "visualization_msgs/msg/interactive_marker_control.hpp"
 #include "visualization_msgs/msg/interactive_marker_feedback.hpp"
+#include "visualization_msgs/msg/marker.hpp"
 
 #include "rviz_common/panel.hpp" // Include for RViz2 panel
 #include <QPushButton>           // Include for UI controls in the panel
@@ -63,14 +64,7 @@ namespace interactive_marker_tutorials
 
     // Marker creation functions
     void make6DofMarker(bool fixed, unsigned int interaction_mode, const tf2::Vector3 &position, bool show_6dof);
-    void makeRandomDofMarker(const tf2::Vector3 &position);
-    void makeViewFacingMarker(const tf2::Vector3 &position);
-    void makeQuadrocopterMarker(const tf2::Vector3 &position);
-    void makeChessPieceMarker(const tf2::Vector3 &position);
-    void makePanTiltMarker(const tf2::Vector3 &position);
-    void makeMenuMarker(const tf2::Vector3 &position);
-    void makeButtonMarker(const tf2::Vector3 &position);
-    void makeMovingMarker(const tf2::Vector3 &position);
+    // void makeGridOfMarkers();
 
   private:
     void frameCallback();                                                                                     // This method periodically broadcasts transform data for moving and rotating frames

@@ -85,6 +85,34 @@ namespace interactive_marker_tutorials
         std::chrono::milliseconds(10), std::bind(&BasicControlsNode::frameCallback, this));
   }
 
+  // Method to create a box marker
+  visualization_msgs::msg::Marker BasicControlsNode::makeBox(const visualization_msgs::msg::InteractiveMarker &msg)
+  {
+    visualization_msgs::msg::Marker marker;
+
+    marker.type = visualization_msgs::msg::Marker::CUBE; // Type set to CUBE
+    marker.scale.x = msg.scale * 0.45;                   // Scale factor for the box
+    marker.scale.y = msg.scale * 0.45;                   // Scale factor for the box
+    marker.scale.z = msg.scale * 0.45;                   // Scale factor for the box
+    marker.color.r = 0.5;                                // Red component of the color
+    marker.color.g = 0.5;                                // Green component of the color
+    marker.color.b = 0.5;                                // Blue component of the color
+    marker.color.a = 1.0;                                // Alpha (opacity) of the color
+
+    return marker;
+  }
+
+  // Method to create a box control for an interactive marker
+  visualization_msgs::msg::InteractiveMarkerControl &BasicControlsNode::makeBoxControl(visualization_msgs::msg::InteractiveMarker &msg)
+  {
+    visualization_msgs::msg::InteractiveMarkerControl control;
+    control.always_visible = true;           // The control is always visible
+    control.markers.push_back(makeBox(msg)); // Add the box marker to the control
+    msg.controls.push_back(control);         // Add the control to the interactive marker's controls
+
+    return msg.controls.back(); // Return the last control added
+  }
+
   void BasicControlsNode::make6DofMarker(bool fixed, unsigned int interaction_mode, const tf2::Vector3 &position, bool show_6dof)
   {
     // Suppress warnings for unused parameters
@@ -102,7 +130,10 @@ namespace interactive_marker_tutorials
     int_marker.pose.position.y = position.y();
     int_marker.pose.position.z = position.z();
 
+    // Add box control to the interactive marker
+    makeBoxControl(int_marker); // Adding the box control to the marker
     // Define a control for moving and rotating along axes
+
     visualization_msgs::msg::InteractiveMarkerControl control;
 
     if (interaction_mode == visualization_msgs::msg::InteractiveMarkerControl::MOVE_3D)
