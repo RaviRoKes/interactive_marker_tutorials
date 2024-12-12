@@ -12,16 +12,20 @@ namespace interactive_marker_tutorials
 
   void BasicControlsPanel::initializePanel()
   {
+    // Initialize the button and connect the signal
     button_ = new QPushButton("Create Marker", this);
     connect(button_, &QPushButton::clicked, this, &BasicControlsPanel::onButtonClicked);
 
-    // Create and link the node
-    basic_controls_node_ = new BasicControlsNode(rclcpp::NodeOptions());
+    // Create and link the node for controlling markers
+    // basic_controls_node_ = std::make_shared<BasicControlsNode>(rclcpp::NodeOptions());
+    basic_controls_node_ = std::make_shared<BasicControlsNode>();
+
     if (basic_controls_node_)
     {
       RCLCPP_INFO(rclcpp::get_logger("BasicControlsPanel"), "Node initialized successfully.");
     }
 
+    // Set layout for the panel
     QVBoxLayout *layout = new QVBoxLayout;
     layout->addWidget(button_);
     setLayout(layout);
@@ -32,18 +36,37 @@ namespace interactive_marker_tutorials
     // Ensure that the node is set and call the marker creation method
     if (basic_controls_node_)
     {
-      RCLCPP_INFO(rclcpp::get_logger("BasicControlsPanel"), "Button clicked: Creating 6Dof Marker");
-      basic_controls_node_->make6DofMarker(true, 0, tf2::Vector3(0.0, 0.0, 0.0), true);
+      RCLCPP_INFO(rclcpp::get_logger("BasicControlsPanel"), "Button clicked: Creating 5x10 Grid of Markers");
+      createMarkerGrid();
     }
     else
     {
       RCLCPP_WARN(rclcpp::get_logger("BasicControlsPanel"), "BasicControlsNode is not set.");
     }
   }
+  // New method to create a 5x10 grid of markers
+  void BasicControlsPanel::createMarkerGrid()
+  {
+    // 5x10 grid
+    int rows = 5;
+    int cols = 10;
+    double spacing = 2.0; // Adjust the spacing between markers
+
+    for (int row = 0; row < rows; ++row)
+    {
+      for (int col = 0; col < cols; ++col)
+      {
+        // Calculate positions for each marker
+        tf2::Vector3 position(col * spacing, row * spacing, 0.0);
+        basic_controls_node_->make6DofMarker(true, 0, position, true);
+      }
+    }
+  }
 
   void BasicControlsPanel::setBasicControlsNode(BasicControlsNode *node)
   {
-    basic_controls_node_ = node;
+    // basic_controls_node_ = node;
+    basic_controls_node_ = std::shared_ptr<BasicControlsNode>(node);
     if (basic_controls_node_)
     {
       RCLCPP_INFO(rclcpp::get_logger("BasicControlsPanel"), "BasicControlsNode successfully linked to BasicControlsPanel.");

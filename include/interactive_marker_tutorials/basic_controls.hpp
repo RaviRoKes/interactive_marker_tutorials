@@ -29,10 +29,13 @@ namespace interactive_marker_tutorials
   {
     Q_OBJECT
   public:
+    // BasicControlsPanel(QWidget *parent = nullptr, std::shared_ptr<BasicControlsNode> node = nullptr);
     BasicControlsPanel(QWidget *parent = nullptr);
     ~BasicControlsPanel();
-
+   // void setBasicControlsNode(std::shared_ptr<BasicControlsNode> node);
     void setBasicControlsNode(BasicControlsNode *node);
+
+    void createMarkerGrid();
 
   protected:
     void initializePanel();
@@ -41,8 +44,8 @@ namespace interactive_marker_tutorials
     void onButtonClicked();
 
   private:
-    QPushButton *button_;                    // Button to interact with the markers
-    BasicControlsNode *basic_controls_node_; // Pointer to the node to trigger marker creation
+    QPushButton *button_;                                    // Button to interact with the markers
+    std::shared_ptr<BasicControlsNode> basic_controls_node_; // Pointer to the node to trigger marker creation
   };
 
   // ROS Node for Interactive Marker Control
