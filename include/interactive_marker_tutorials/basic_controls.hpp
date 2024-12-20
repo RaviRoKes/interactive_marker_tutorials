@@ -18,6 +18,7 @@
 #include "rviz_common/panel.hpp" // Include for RViz2 panel
 #include <QPushButton>           // Include for UI controls in the panel
 #include <QVBoxLayout>           // Include for layout management
+#include <QLineEdit>             // Include for text input fields
 
 namespace interactive_marker_tutorials
 {
@@ -29,22 +30,23 @@ namespace interactive_marker_tutorials
   {
     Q_OBJECT
   public:
-    // BasicControlsPanel(QWidget *parent = nullptr, std::shared_ptr<BasicControlsNode> node = nullptr);
     BasicControlsPanel(QWidget *parent = nullptr);
     ~BasicControlsPanel();
-   // void setBasicControlsNode(std::shared_ptr<BasicControlsNode> node);
-    void setBasicControlsNode(BasicControlsNode *node);
 
-    void createMarkerGrid();
+    void setBasicControlsNode(BasicControlsNode *node);
 
   protected:
     void initializePanel();
 
   private slots:
     void onButtonClicked();
+    void onPublishFrameClicked(); // Trigger publishing the transformation
 
   private:
     QPushButton *button_;                                    // Button to interact with the markers
+    QPushButton *publish_frame_button_;                      // Button to publish frame transform
+    QLineEdit *frame_name_input_;                            // Text input for frame name
+    QLineEdit *parent_frame_name_input_;                     // Text input for parent frame name
     std::shared_ptr<BasicControlsNode> basic_controls_node_; // Pointer to the node to trigger marker creation
   };
 
@@ -60,26 +62,26 @@ namespace interactive_marker_tutorials
     {
       server_->applyChanges();
     }
-
-    // Helper Methods for Marker Control
-    visualization_msgs::msg::Marker makeBox(const visualization_msgs::msg::InteractiveMarker &msg);
-    visualization_msgs::msg::InteractiveMarkerControl &makeBoxControl(visualization_msgs::msg::InteractiveMarker &msg);
-
     // Marker creation functions
+    void processBoxClick(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback); // Processes box marker clicks
+
     void make6DofMarker(bool fixed, unsigned int interaction_mode, const tf2::Vector3 &position, bool show_6dof);
-    // void makeGridOfMarkers();
+    void createGridOfBoxes();
+    void createBoxMarker(const tf2::Vector3 &position, const std::string &marker_name);
 
-  private:
-    void frameCallback();                                                                                     // This method periodically broadcasts transform data for moving and rotating frames
-    void processFeedback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback); // Processes feedback from interactive markers
-    void alignMarker(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback);     // Aligns the marker to a grid
+    // New method to publish frame transformation
+    void publishFrameTransformation(const std::string &frame_id, const std::string &parent_frame_id);
 
-    std::unique_ptr<interactive_markers::InteractiveMarkerServer> server_; // A unique pointer to an InteractiveMarkerServer
+  private:                                                                         // This method periodically broadcasts transform data for moving and rotating frames
+    void make6DofControls(visualization_msgs::msg::InteractiveMarker &int_marker); // Adds 6-DOF controls to markers
+
+    std::shared_ptr<interactive_markers::InteractiveMarkerServer> server_; // A unique pointer to an InteractiveMarkerServer
     interactive_markers::MenuHandler menu_handler_;                        // Instance of MenuHandler for marker context menu interactions
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;        // TransformBroadcaster for sending transform updates
     rclcpp::TimerBase::SharedPtr frame_timer_;                             // Timer for periodic updates
   };
 
 } // namespace interactive_marker_tutorials
-
 #endif // BASIC_CONTROLS_HPP
+
+// skjdk  ndfcdf dvfd

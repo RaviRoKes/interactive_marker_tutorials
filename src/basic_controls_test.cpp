@@ -1,4 +1,3 @@
-// Integration between the ROS 2 node (BasicControlsNode) and the RViz panel (BasicControlsPanel
 #include "interactive_marker_tutorials/basic_controls.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include <QApplication> // Include QApplication
@@ -11,19 +10,31 @@ int main(int argc, char **argv)
 
     rclcpp::init(argc, argv);
 
-    // creates a shared pointer to the BasicControlsNode, which is the ROS 2 node responsible for managing interactive markers and broadcasting transforms.
+    // Create a shared pointer to the BasicControlsNode, which manages markers and transforms
     auto node = std::make_shared<interactive_marker_tutorials::BasicControlsNode>(rclcpp::NodeOptions());
 
-    // creates a shared pointer to the BasicControlsPanel (the RViz panel containing the UI components like buttons).
+    // Create the RViz panel for UI components like buttons
     auto panel = std::make_shared<interactive_marker_tutorials::BasicControlsPanel>();
 
-    // sets the node in the panel, linking the ROS 2 node to the panel so the button in the UI can trigger ROS-based functionality like marker creation.
+    // Set the node in the panel to link the ROS 2 node with UI functionality
     panel->setBasicControlsNode(node.get());
 
     RCLCPP_INFO(rclcpp::get_logger("Test"), "Node and Panel linkage established.");
 
-    rclcpp::spin(node); // This will keep the ROS 2 node running
+    // Run the ROS 2 node in a separate thread to allow simultaneous Qt execution
+    std::thread ros_thread([&]()
+                           {
+       rclcpp::spin(node);
+       rclcpp::shutdown(); });
 
-    rclcpp::shutdown();
-    return app.exec(); // Start Qt event loop after ROS 2 node is shut down
+    // Start the Qt event loop
+    int qt_result = app.exec();
+
+    // Join the ROS thread after Qt exits
+    if (ros_thread.joinable())
+    {
+        ros_thread.join();
+    }
+
+    return qt_result;
 }
