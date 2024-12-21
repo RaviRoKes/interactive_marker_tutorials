@@ -1,0 +1,12 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/opt/ros/rolling/lib/python3.12/site-packages",
+        "/home/ravik/ros2_prac/install/my_py_pkg/lib/python3.12/site-packages",
+        "/opt/ros/jazzy/lib/python3.12/site-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/opt/ros/rolling/lib/python3.12/site-packages",
+        "/home/ravik/ros2_prac/install/my_py_pkg/lib/python3.12/site-packages",
+        "/opt/ros/jazzy/lib/python3.12/site-packages"
+    ]
+}

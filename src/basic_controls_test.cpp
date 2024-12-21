@@ -11,7 +11,8 @@ int main(int argc, char **argv)
     rclcpp::init(argc, argv);
 
     // Create a shared pointer to the BasicControlsNode, which manages markers and transforms
-    auto node = std::make_shared<interactive_marker_tutorials::BasicControlsNode>(rclcpp::NodeOptions());
+    //  auto node = std::make_shared<interactive_marker_tutorials::BasicControlsNode>(rclcpp::NodeOptions());
+    auto node = std::make_shared<interactive_marker_tutorials::BasicControlsNode>(rclcpp::NodeOptions().append_parameter_override("node_name", "basic_controls_1"));
 
     // Create the RViz panel for UI components like buttons
     auto panel = std::make_shared<interactive_marker_tutorials::BasicControlsPanel>();
@@ -38,3 +39,5 @@ int main(int argc, char **argv)
 
     return qt_result;
 }
+
+//final

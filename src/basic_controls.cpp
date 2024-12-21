@@ -1,5 +1,8 @@
 #include "interactive_marker_tutorials/basic_controls.hpp"
 #include "visualization_msgs/msg/interactive_marker_control.hpp"
+#include "visualization_msgs/msg/interactive_marker_feedback.hpp"
+#include "rviz_common/display_context.hpp"
+#include "rclcpp/rclcpp.hpp"
 #include <sstream>
 namespace interactive_marker_tutorials
 {
@@ -52,6 +55,7 @@ namespace interactive_marker_tutorials
     {
       RCLCPP_WARN(rclcpp::get_logger("BasicControlsPanel"), "BasicControlsNode is not set.");
     }
+    basic_controls_node_->applyChanges();
   }
   void BasicControlsPanel::onPublishFrameClicked()
   {
@@ -91,14 +95,12 @@ namespace interactive_marker_tutorials
       RCLCPP_WARN(rclcpp::get_logger("BasicControlsPanel"), "Failed to link BasicControlsNode to BasicControlsPanel.");
     }
   }
-
   BasicControlsNode::BasicControlsNode(const rclcpp::NodeOptions &options)
-      : rclcpp::Node("basic_controls", options), menu_handler_()
+      : rclcpp::Node("basic_controls_1", options), menu_handler_()
   {
-
     this->get_logger().set_level(rclcpp::Logger::Level::Debug);
 
-    server_ = std::make_shared<interactive_markers::InteractiveMarkerServer>(
+    server_ = std::make_unique<interactive_markers::InteractiveMarkerServer>(
         "basic_controls",
         get_node_base_interface(),
         get_node_clock_interface(),
@@ -106,7 +108,7 @@ namespace interactive_marker_tutorials
         get_node_topics_interface(),
         get_node_services_interface());
 
-    RCLCPP_INFO(get_logger(), "InteractiveMarkerServer initialized.");
+    RCLCPP_DEBUG(get_logger(), "InteractiveMarkerServer initialized successfully.");
 
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
   }
@@ -131,8 +133,8 @@ namespace interactive_marker_tutorials
   }
   void BasicControlsNode::createGridOfBoxes()
   {
-    const int rows = 5;
-    const int cols = 5;
+    const int rows = 1;
+    const int cols = 1;
     const double spacing = 2.0;
     int marker_index = 0; // Add an index to ensure unique names even for identical positions
 
@@ -163,9 +165,9 @@ namespace interactive_marker_tutorials
     // Add a simple box visual for the button
     visualization_msgs::msg::Marker box_marker;
     box_marker.type = visualization_msgs::msg::Marker::CUBE;
-    box_marker.scale.x = 0.5;
-    box_marker.scale.y = 0.5;
-    box_marker.scale.z = 0.5;
+    box_marker.scale.x = 1.5;
+    box_marker.scale.y = 1.5;
+    box_marker.scale.z = 1.5;
     box_marker.color.r = 0.0f;
     box_marker.color.g = 1.0f;
     box_marker.color.b = 0.0f;
@@ -181,13 +183,60 @@ namespace interactive_marker_tutorials
     button_control.markers.push_back(box_marker);  // Add the box marker to the control
     int_marker.controls.push_back(button_control); // Add the control to the interactive marker
 
-    // server_->insert(int_marker, std::bind(&BasicControlsNode::processBoxClick, this, std::placeholders::_1));
+    // menu
+    // Create and use MenuHandler to add items to the menu
+    menu_handler_.insert("Select Option 1", std::bind(&BasicControlsNode::handleMenuSelect, this, std::placeholders::_1));
+    menu_handler_.insert("Select Option 2", std::bind(&BasicControlsNode::handleMenuSelect, this, std::placeholders::_1));
 
-    server_->insert(int_marker);
-    server_->setCallback(int_marker.name, std::bind(&BasicControlsNode::processBoxClick, this, std::placeholders::_1)); // Callback function processBoxClick is assigned using server_->setCallback
+    // Add the menu to the control
+    visualization_msgs::msg::InteractiveMarkerControl menu_control;
+    menu_control.name = "menu_control";
+    menu_control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::MENU;
+    menu_control.always_visible = true;
+    int_marker.controls.push_back(menu_control);
+
+    RCLCPP_DEBUG(get_logger(), "Inserting marker '%s' into server...", int_marker.name.c_str());
+    server_->insert(int_marker, std::bind(&BasicControlsNode::processBoxClick, this, std::placeholders::_1)); // Callback function processBoxClick is assigned using server_->setCallback
     RCLCPP_DEBUG(get_logger(), "Callback bound to marker: %s", int_marker.name.c_str());
-    server_->applyChanges();
+    menu_handler_.apply(*server_, int_marker.name);
     RCLCPP_DEBUG(get_logger(), "Marker '%s' inserted and changes applied to InteractiveMarkerServer.", int_marker.name.c_str());
+  }
+  void BasicControlsNode::handleMenuSelect(
+      const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback)
+  {
+    // Check if the feedback is related to menu item selection
+    if (feedback->event_type == visualization_msgs::msg::InteractiveMarkerFeedback::MENU_SELECT)
+    {
+      RCLCPP_INFO(get_logger(), "Menu item selected: %d", feedback->menu_entry_id); // Changed %s to %d
+
+      // Here you can check for different menu items by their IDs
+      if (feedback->menu_entry_id == 1)
+      {
+        // Handle Option 1 selection
+        RCLCPP_INFO(get_logger(), "Option 1 selected.");
+
+        // Call make6DofMarker to create a 6-DOF marker at the current position
+        tf2::Vector3 position(feedback->pose.position.x, feedback->pose.position.y, feedback->pose.position.z);
+        make6DofMarker(true, visualization_msgs::msg::InteractiveMarkerControl::MOVE_3D, position, true);
+      }
+      else if (feedback->menu_entry_id == 2)
+      {
+        // Handle Option 2 selection
+        RCLCPP_INFO(get_logger(), "Option 2 selected.");
+
+        // You can add another position or logic for Option 2 if needed
+        tf2::Vector3 position(feedback->pose.position.x, feedback->pose.position.y, feedback->pose.position.z);
+        make6DofMarker(true, visualization_msgs::msg::InteractiveMarkerControl::ROTATE_3D, position, false);
+      }
+      else
+      {
+        RCLCPP_WARN(get_logger(), "Unknown menu item selected.");
+      }
+    }
+    else
+    {
+      RCLCPP_WARN(get_logger(), "Unexpected event type: %d", feedback->event_type);
+    }
   }
 
   /// dfk//
@@ -320,4 +369,4 @@ namespace interactive_marker_tutorials
 #include <pluginlib/class_list_macros.hpp>
 PLUGINLIB_EXPORT_CLASS(interactive_marker_tutorials::BasicControlsPanel, rviz_common::Panel)
 
-// start Wednes only dfkn fghgf
+// start Wedne df dfdf saturd
