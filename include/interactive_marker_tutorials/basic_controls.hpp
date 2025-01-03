@@ -70,21 +70,19 @@ namespace interactive_marker_tutorials
     void make6DofMarker(bool fixed, unsigned int interaction_mode, const tf2::Vector3 &position, bool show_6dof);
 
     // New method to publish frame transformation
-    void publishFrameTransformation(const std::string &frame_id, const std::string &parent_frame_id);
-
-  private:                                                                                                    // This method periodically broadcasts transform data for moving and rotating frames
+    void publishFrameTransformation(const std::string &frame_id, const std::string &parent_frame_id);         // This method periodically broadcasts transform data for moving and rotating frames
     void processBoxClick(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback); // Processes box marker clicks
-
     void handleMenuSelect(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback);
-    void make6DofControls(visualization_msgs::msg::InteractiveMarker &int_marker); // Adds 6-DOF controls to markers
+    void changeMarkerColor(const std::string &marker_name, float r, float g, float b);
 
-    std::unique_ptr<interactive_markers::InteractiveMarkerServer> server_; // A unique pointer to an InteractiveMarkerServer
-    interactive_markers::MenuHandler menu_handler_;                        // Instance of MenuHandler for marker context menu interactions
-    std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;        // TransformBroadcaster for sending transform updates
-    rclcpp::TimerBase::SharedPtr frame_timer_;                             // Timer for periodic updates
+    std::unique_ptr<interactive_markers::InteractiveMarkerServer> server_;                                      // A unique pointer to an InteractiveMarkerServer
+    interactive_markers::MenuHandler menu_handler_;                                                             // Instance of MenuHandler for marker context menu interactions
+    std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;                                             // TransformBroadcaster for sending transform updates
+    rclcpp::TimerBase::SharedPtr frame_timer_;                                                                  // Timer for periodic updates
+    rclcpp::Subscription<visualization_msgs::msg::InteractiveMarkerFeedback>::SharedPtr feedback_subscription_; // Add this line
   };
 
 } // namespace interactive_marker_tutorials
 #endif // BASIC_CONTROLS_HPP
 
-// skjdk  ndfcd ok  dvcd
+// skjdk gfhfg fgdef

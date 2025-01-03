@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.22)
 project(interactive_marker_tutorials LANGUAGES CXX)
 
 # Default to C99
@@ -11,13 +11,11 @@ if(NOT CMAKE_CXX_STANDARD)
  set(CMAKE_CXX_STANDARD 17)
 endif()
 
-
 if(CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)")
  add_compile_options(-Wall -Wextra -Wpedantic -Werror=conversion -Werror=unused-but-set-variable
    -Werror=return-type -Werror=shadow -Werror=format -Werror=range-loop-construct
    -Werror=missing-braces)
 endif()
-
 
 # Find necessary packages
 find_package(ament_cmake REQUIRED)
@@ -40,7 +38,6 @@ set(CMAKE_AUTOMOC ON)
 qt5_wrap_cpp(MOC_FILES
  include/interactive_marker_tutorials/basic_controls.hpp
 )
-
 
 # Add basic_controls as a shared library
 add_library(basic_controls SHARED src/basic_controls.cpp ${MOC_FILES})
@@ -130,5 +127,4 @@ endif()
 # Mark the package
 ament_package()
 
-
-#fr
+#Mo

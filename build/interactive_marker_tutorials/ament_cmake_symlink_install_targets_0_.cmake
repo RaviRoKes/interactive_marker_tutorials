@@ -1,0 +1,1 @@
+ament_cmake_symlink_install_targets("TARGET_FILES" "/home/ravik/ros2_rviz/src/interactive_marker_tutorials/build/interactive_marker_tutorials/basic_controls_test" "TARGETS" "basic_controls_test" "RUNTIME_DESTINATION" "lib/interactive_marker_tutorials")

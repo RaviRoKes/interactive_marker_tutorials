@@ -21,9 +21,11 @@ namespace interactive_marker_tutorials
     frame_name_input_->setPlaceholderText("Enter Frame Name");
     parent_frame_name_input_ = new QLineEdit(this);
     parent_frame_name_input_->setPlaceholderText("Enter Parent Frame Name");
+
     // Initialize the "Publish Frame" button
     publish_frame_button_ = new QPushButton("Publish Frame", this);
     connect(publish_frame_button_, &QPushButton::clicked, this, &BasicControlsPanel::onPublishFrameClicked);
+
     // Set layout for the panel
     QVBoxLayout *layout = new QVBoxLayout;
     layout->addWidget(button_);
@@ -43,7 +45,7 @@ namespace interactive_marker_tutorials
     // Ensure that the node is set and call the marker creation method
     if (basic_controls_node_)
     {
-      RCLCPP_INFO(rclcpp::get_logger("BasicControlsPanel"), "Button clicked: Creating 5x5 Grid of Markers");
+      RCLCPP_INFO(rclcpp::get_logger("BasicControlsPanel"), "Button clicked: Creating 1x1 Grid of Markers");
       basic_controls_node_->createGridOfBoxes();
       // basic_controls_node_->make6DofMarker(true, 0, tf2::Vector3(0.0, 0.0, 0.0), true); // b1
 
@@ -96,7 +98,7 @@ namespace interactive_marker_tutorials
     }
   }
   BasicControlsNode::BasicControlsNode(const rclcpp::NodeOptions &options)
-      : rclcpp::Node("basic_controls_1", options), menu_handler_()
+      : rclcpp::Node("basic_controls", options)
   {
     this->get_logger().set_level(rclcpp::Logger::Level::Debug);
 
@@ -108,9 +110,13 @@ namespace interactive_marker_tutorials
         get_node_topics_interface(),
         get_node_services_interface());
 
-    RCLCPP_DEBUG(get_logger(), "InteractiveMarkerServer initialized successfully.");
+    RCLCPP_DEBUG(get_logger(), "InteractiveMarkerServer initialized successfully."); //
 
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+    // Subscribe to feedback topic and listen to IMF message type
+    feedback_subscription_ = this->create_subscription<visualization_msgs::msg::InteractiveMarkerFeedback>(
+        "basic_controls/feedback", 10,
+        std::bind(&BasicControlsNode::processBoxClick, this, std::placeholders::_1));
   }
 
   void BasicControlsNode::publishFrameTransformation(const std::string &frame_id, const std::string &parent_frame_id)
@@ -152,6 +158,8 @@ namespace interactive_marker_tutorials
   }
   void BasicControlsNode::createBoxMarker(const tf2::Vector3 &position, const std::string &marker_name)
   {
+    RCLCPP_DEBUG(get_logger(), "Creating box marker with name: '%s'", marker_name.c_str());
+
     visualization_msgs::msg::InteractiveMarker int_marker;
     int_marker.header.frame_id = "base_link";
     int_marker.header.stamp = this->get_clock()->now();
@@ -162,6 +170,7 @@ namespace interactive_marker_tutorials
     int_marker.pose.position.y = position.y();
     int_marker.pose.position.z = position.z();
 
+    RCLCPP_DEBUG(get_logger(), "Position set to: x = %.2f, y = %.2f, z = %.2f", position.x(), position.y(), position.z());
     // Add a simple box visual for the button
     visualization_msgs::msg::Marker box_marker;
     box_marker.type = visualization_msgs::msg::Marker::CUBE;
@@ -172,201 +181,91 @@ namespace interactive_marker_tutorials
     box_marker.color.g = 1.0f;
     box_marker.color.b = 0.0f;
     box_marker.color.a = 1.0f;
+    RCLCPP_DEBUG(get_logger(), "Box marker visual created with scale: x = %.2f, y = %.2f, z = %.2f",
+                 box_marker.scale.x, box_marker.scale.y, box_marker.scale.z);
 
     // Add a control for interaction (ensure it's a BUTTON type)
     visualization_msgs::msg::InteractiveMarkerControl button_control;
     button_control.name = "box_control";                                                         // Ensure the control name is unique and relevant
     button_control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::BUTTON; // MoVE_3D , BUTTON
     button_control.always_visible = true;
+    RCLCPP_DEBUG(get_logger(), "Setting interaction mode to BUTTON for control: %s", button_control.name.c_str());
 
     // Create a marker for the box
     button_control.markers.push_back(box_marker);  // Add the box marker to the control
     int_marker.controls.push_back(button_control); // Add the control to the interactive marker
 
-    // menu
-    // Create and use MenuHandler to add items to the menu
-    menu_handler_.insert("Select Option 1", std::bind(&BasicControlsNode::handleMenuSelect, this, std::placeholders::_1));
-    menu_handler_.insert("Select Option 2", std::bind(&BasicControlsNode::handleMenuSelect, this, std::placeholders::_1));
-
-    // Add the menu to the control
-    visualization_msgs::msg::InteractiveMarkerControl menu_control;
-    menu_control.name = "menu_control";
-    menu_control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::MENU;
-    menu_control.always_visible = true;
-    int_marker.controls.push_back(menu_control);
+    // Insert the marker into the server
+    RCLCPP_INFO(get_logger(), "before InteractiveMarkerServer contains %zu markers.", server_->size());
+    server_->insert(int_marker);
 
     RCLCPP_DEBUG(get_logger(), "Inserting marker '%s' into server...", int_marker.name.c_str());
-    server_->insert(int_marker, std::bind(&BasicControlsNode::processBoxClick, this, std::placeholders::_1)); // Callback function processBoxClick is assigned using server_->setCallback
+    visualization_msgs::msg::InteractiveMarker check_marker;
+    if (!server_->get(int_marker.name, check_marker))
+    {
+      RCLCPP_ERROR(get_logger(), "Failed to retrieve marker '%s' after insertion.", int_marker.name.c_str());
+    }
+
+    // Bind the callback for the box click
+    RCLCPP_DEBUG(get_logger(), "Binding callback to marker: %s", int_marker.name.c_str());
+    server_->setCallback(int_marker.name, std::bind(&BasicControlsNode::processBoxClick, this, std::placeholders::_1)); // Callback binding
     RCLCPP_DEBUG(get_logger(), "Callback bound to marker: %s", int_marker.name.c_str());
-    menu_handler_.apply(*server_, int_marker.name);
+
+    // Apply the changes to the server
+    server_->applyChanges();
+    RCLCPP_INFO(get_logger(), "after InteractiveMarkerServer contains %zu markers.", server_->size());
     RCLCPP_DEBUG(get_logger(), "Marker '%s' inserted and changes applied to InteractiveMarkerServer.", int_marker.name.c_str());
   }
-  void BasicControlsNode::handleMenuSelect(
-      const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback)
-  {
-    // Check if the feedback is related to menu item selection
-    if (feedback->event_type == visualization_msgs::msg::InteractiveMarkerFeedback::MENU_SELECT)
-    {
-      RCLCPP_INFO(get_logger(), "Menu item selected: %d", feedback->menu_entry_id); // Changed %s to %d
 
-      // Here you can check for different menu items by their IDs
-      if (feedback->menu_entry_id == 1)
-      {
-        // Handle Option 1 selection
-        RCLCPP_INFO(get_logger(), "Option 1 selected.");
-
-        // Call make6DofMarker to create a 6-DOF marker at the current position
-        tf2::Vector3 position(feedback->pose.position.x, feedback->pose.position.y, feedback->pose.position.z);
-        make6DofMarker(true, visualization_msgs::msg::InteractiveMarkerControl::MOVE_3D, position, true);
-      }
-      else if (feedback->menu_entry_id == 2)
-      {
-        // Handle Option 2 selection
-        RCLCPP_INFO(get_logger(), "Option 2 selected.");
-
-        // You can add another position or logic for Option 2 if needed
-        tf2::Vector3 position(feedback->pose.position.x, feedback->pose.position.y, feedback->pose.position.z);
-        make6DofMarker(true, visualization_msgs::msg::InteractiveMarkerControl::ROTATE_3D, position, false);
-      }
-      else
-      {
-        RCLCPP_WARN(get_logger(), "Unknown menu item selected.");
-      }
-    }
-    else
-    {
-      RCLCPP_WARN(get_logger(), "Unexpected event type: %d", feedback->event_type);
-    }
-  }
-
-  /// dfk//
   void BasicControlsNode::processBoxClick(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback)
   {
     RCLCPP_DEBUG(get_logger(), "Received feedback: %s with event type: %d", feedback->marker_name.c_str(), feedback->event_type);
 
-    if (feedback->event_type == visualization_msgs::msg::InteractiveMarkerFeedback::BUTTON_CLICK)
+    switch (feedback->event_type)
     {
-      RCLCPP_INFO(rclcpp::get_logger("basic_controls"), "Marker clicked: %s", feedback->marker_name.c_str());
-
-      // Retrieve the clicked marker
-      visualization_msgs::msg::InteractiveMarker int_marker;
-      if (!server_->get(feedback->marker_name, int_marker))
-      {
-        RCLCPP_WARN(get_logger(), "Marker '%s' not found!", feedback->marker_name.c_str());
-        return;
-      }
-      RCLCPP_INFO(get_logger(), "Erasing marker and creating 6-DOF marker at: [%f, %f, %f]",
-                  feedback->pose.position.x, feedback->pose.position.y, feedback->pose.position.z);
-
-      server_->erase(feedback->marker_name); // This will erase the previous marker
-
-      // Extract position from feedback->pose and convert to tf2::Vector3
-      tf2::Vector3 position(feedback->pose.position.x, feedback->pose.position.y, feedback->pose.position.z);
-      make6DofMarker(true, visualization_msgs::msg::InteractiveMarkerControl::MOVE_3D, position, true);
-
-      RCLCPP_INFO(get_logger(), "6-DOF marker created at position: [%f, %f, %f]",
-                  position.x(), position.y(), position.z());
-    }
-    else
-    {
-      RCLCPP_WARN(rclcpp::get_logger("basic_controls"), "Unexpected event type: %d", feedback->event_type);
+    case visualization_msgs::msg::InteractiveMarkerFeedback::BUTTON_CLICK:
+      RCLCPP_INFO(get_logger(), "Marker clicked: %s", feedback->marker_name.c_str());
+      // Proceed with marker color change
+      changeMarkerColor(feedback->marker_name, 1.0f, 0.0f, 0.0f); // Change to red
+      break;
+    case visualization_msgs::msg::InteractiveMarkerFeedback::POSE_UPDATE:
+      RCLCPP_INFO(get_logger(), "Marker pose updated: %s", feedback->marker_name.c_str());
+      break;
+    case visualization_msgs::msg::InteractiveMarkerFeedback::MENU_SELECT:
+      RCLCPP_INFO(get_logger(), "Menu item selected for marker: %s", feedback->marker_name.c_str());
+      break;
+    default:
+      RCLCPP_WARN(get_logger(), "Unexpected event type: %d", feedback->event_type);
+      break;
     }
   }
-  void BasicControlsNode::make6DofMarker(bool fixed, unsigned int interaction_mode, const tf2::Vector3 &position, bool show_6dof)
+  void BasicControlsNode::changeMarkerColor(const std::string &marker_name, float r, float g, float b)
   {
-    // Suppress warnings for unused parameters
-    (void)fixed;
-    (void)show_6dof;
-
-    // Define an interactive marker
+    RCLCPP_INFO(get_logger(), "InteractiveMarkerServer contains %zu markers.", server_->size());
     visualization_msgs::msg::InteractiveMarker int_marker;
-    int_marker.header.frame_id = "base_link"; // Adjust frame as needed
-    int_marker.header.stamp = this->get_clock()->now();
-    // int_marker.name = "6dof_marker";
-    int_marker.name = "6dof_marker_" + std::to_string(position.x()) + "_" + std::to_string(position.y());
-    int_marker.description = "6-DOF Control Marker";
-    int_marker.scale = 1.0; // Adjust marker scale
-    int_marker.pose.position.x = position.x();
-    int_marker.pose.position.y = position.y();
-    int_marker.pose.position.z = position.z();
-
-    // Define controls for moving and rotating along axes
-    visualization_msgs::msg::InteractiveMarkerControl control;
-
-    if (interaction_mode == visualization_msgs::msg::InteractiveMarkerControl::MOVE_3D)
+    if (!server_->get(marker_name, int_marker))
     {
-      control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::MOVE_3D;
-      control.name = "move_3d";
-      int_marker.controls.push_back(control);
+      RCLCPP_WARN(get_logger(), "Marker '%s' not found!", marker_name.c_str());
+      return; // Exit if the marker isn't found
     }
-    else if (interaction_mode == visualization_msgs::msg::InteractiveMarkerControl::ROTATE_3D)
+
+    for (auto &control : int_marker.controls)
     {
-      control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::ROTATE_3D;
-      control.name = "rotate_3d";
-      int_marker.controls.push_back(control);
-    }
-    else
-    {
-      // Add 6-DOF controls (translation + rotation on all axes)
-      std::vector<std::string> axes = {"x", "y", "z"};
-      for (const std::string &axis : axes)
+      for (auto &marker : control.markers)
       {
-        control.orientation.w = 1.0;
-        if (axis == "x")
-        {
-          control.orientation.x = 1.0;
-          control.orientation.y = 0.0;
-          control.orientation.z = 0.0;
-          control.name = "rotate_x";
-          control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::ROTATE_AXIS;
-          int_marker.controls.push_back(control);
-
-          control.name = "move_x";
-          control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::MOVE_AXIS;
-          int_marker.controls.push_back(control);
-        }
-        else if (axis == "y")
-        {
-          control.orientation.x = 0.0;
-          control.orientation.y = 1.0;
-          control.orientation.z = 0.0;
-          control.name = "rotate_y";
-          control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::ROTATE_AXIS;
-          int_marker.controls.push_back(control);
-
-          control.name = "move_y";
-          control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::MOVE_AXIS;
-          int_marker.controls.push_back(control);
-        }
-        else if (axis == "z")
-        {
-          control.orientation.x = 0.0;
-          control.orientation.y = 0.0;
-          control.orientation.z = 1.0;
-          control.name = "rotate_z";
-          control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::ROTATE_AXIS;
-          int_marker.controls.push_back(control);
-
-          control.name = "move_z";
-          control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::MOVE_AXIS;
-          int_marker.controls.push_back(control);
-        }
+        marker.color.r = r;
+        marker.color.g = g;
+        marker.color.b = b;
+        marker.color.a = 1.0f; // Ensure the marker remains visible
       }
     }
+    server_->insert(int_marker);
+    server_->applyChanges();
 
-    // // Insert the marker into the server
-    // server_->insert(int_marker);
-
-    // // Register a callback for interaction with the marker
-    // server_->setCallback(int_marker.name, std::bind(&BasicControlsNode::processBoxClick, this, std::placeholders::_1));
-
-    // // Apply changes to ensure the marker is updated in RViz
-    // server_->applyChanges();
-
-    RCLCPP_INFO(get_logger(), "6Dof Marker created and added to server.");
+    RCLCPP_INFO(get_logger(), "Color changed for marker: %s", marker_name.c_str());
   }
 }
 #include <pluginlib/class_list_macros.hpp>
 PLUGINLIB_EXPORT_CLASS(interactive_marker_tutorials::BasicControlsPanel, rviz_common::Panel)
 
-// start Wedne df dfdf saturd
+// start  tuseday lasssssss

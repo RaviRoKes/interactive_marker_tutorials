@@ -1,3 +1,5 @@
+//// start the ROS 2 node (basic_controls_node) that will publish the interactive markers.
+
 #include "interactive_marker_tutorials/basic_controls.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include <QApplication> // Include QApplication
@@ -11,9 +13,12 @@ int main(int argc, char **argv)
     rclcpp::init(argc, argv);
 
     // Create a shared pointer to the BasicControlsNode, which manages markers and transforms
-    //  auto node = std::make_shared<interactive_marker_tutorials::BasicControlsNode>(rclcpp::NodeOptions());
-    auto node = std::make_shared<interactive_marker_tutorials::BasicControlsNode>(rclcpp::NodeOptions().append_parameter_override("node_name", "basic_controls_1"));
-
+    auto node = std::make_shared<interactive_marker_tutorials::BasicControlsNode>(rclcpp::NodeOptions());
+    if (!node) // Check if node creation failed
+    {
+        RCLCPP_ERROR(rclcpp::get_logger("Test"), "Failed to initialize BasicControlsNode.");
+        return 1; // Return error code
+    }
     // Create the RViz panel for UI components like buttons
     auto panel = std::make_shared<interactive_marker_tutorials::BasicControlsPanel>();
 
@@ -40,4 +45,4 @@ int main(int argc, char **argv)
     return qt_result;
 }
 
-//final
+// final Monday tues
