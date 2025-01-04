@@ -33,7 +33,6 @@ namespace interactive_marker_tutorials
   public:
     BasicControlsPanel(QWidget *parent = nullptr);
     ~BasicControlsPanel();
-
     void setBasicControlsNode(BasicControlsNode *node);
 
   protected:
@@ -56,7 +55,6 @@ namespace interactive_marker_tutorials
   {
   public:
     explicit BasicControlsNode(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
-
     ~BasicControlsNode() = default;
 
     inline void applyChanges()
@@ -79,10 +77,10 @@ namespace interactive_marker_tutorials
     interactive_markers::MenuHandler menu_handler_;                                                             // Instance of MenuHandler for marker context menu interactions
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;                                             // TransformBroadcaster for sending transform updates
     rclcpp::TimerBase::SharedPtr frame_timer_;                                                                  // Timer for periodic updates
-    rclcpp::Subscription<visualization_msgs::msg::InteractiveMarkerFeedback>::SharedPtr feedback_subscription_; // Add this line
+    rclcpp::Subscription<visualization_msgs::msg::InteractiveMarkerFeedback>::SharedPtr feedback_subscription_; 
   };
 
 } // namespace interactive_marker_tutorials
 #endif // BASIC_CONTROLS_HPP
 
-// skjdk gfhfg fgdef
+// skjdk gfhfg fgdef s
