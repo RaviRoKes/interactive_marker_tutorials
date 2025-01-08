@@ -1,7 +1,9 @@
 #include "interactive_marker_tutorials/basic_controls.hpp"
 #include "visualization_msgs/msg/interactive_marker_control.hpp"
 #include "visualization_msgs/msg/interactive_marker_feedback.hpp"
-#include "rviz_common/display_context.hpp"
+#include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/quaternion.hpp"
+#include <pluginlib/class_list_macros.hpp>
 #include "rclcpp/rclcpp.hpp"
 #include <sstream>
 namespace interactive_marker_tutorials
@@ -48,7 +50,6 @@ namespace interactive_marker_tutorials
       RCLCPP_INFO(rclcpp::get_logger("BasicControlsPanel"), "Button clicked: Creating 1x1 Grid of Markers");
       basic_controls_node_->createGridOfBoxes();
       // basic_controls_node_->make6DofMarker(true, 0, tf2::Vector3(0.0, 0.0, 0.0), true); // b1
-
       // Thread-safe UI update (if needed)
       QMetaObject::invokeMethod(this, [this]()
                                 { button_->setText("Markers Created"); });
@@ -70,7 +71,7 @@ namespace interactive_marker_tutorials
       if (frame_name.empty() || parent_frame_name.empty())
       {
         RCLCPP_WARN(rclcpp::get_logger("BasicControlsPanel"), "Both frame names must be entered.");
-        return; // Exit if input fields are empty
+        return;
       }
       RCLCPP_INFO(rclcpp::get_logger("BasicControlsPanel"), "Publishing transformation between '%s' and '%s'.", frame_name.c_str(), parent_frame_name.c_str());
       basic_controls_node_->publishFrameTransformation(frame_name, parent_frame_name);
@@ -80,7 +81,6 @@ namespace interactive_marker_tutorials
       RCLCPP_WARN(rclcpp::get_logger("BasicControlsPanel"), "BasicControlsNode is not set.");
     }
   }
-
   BasicControlsPanel::~BasicControlsPanel()
   {
     // Optional: Add any custom cleanup code if needed
@@ -97,8 +97,9 @@ namespace interactive_marker_tutorials
       RCLCPP_WARN(rclcpp::get_logger("BasicControlsPanel"), "Failed to link BasicControlsNode to BasicControlsPanel.");
     }
   }
+
   BasicControlsNode::BasicControlsNode(const rclcpp::NodeOptions &options)
-      : rclcpp::Node("basic_controls", options)
+      : rclcpp::Node("basic_controls", options) // ros2 node name
   {
     this->get_logger().set_level(rclcpp::Logger::Level::Debug);
 
@@ -110,10 +111,12 @@ namespace interactive_marker_tutorials
         get_node_topics_interface(),
         get_node_services_interface());
 
-    RCLCPP_DEBUG(get_logger(), "InteractiveMarkerServer initialized successfully."); //
+    RCLCPP_DEBUG(get_logger(), "InteractiveMarkerServer initialized successfullys.");
+    // Bind callback immediately after server initialization
+    server_->setCallback("box_marker", std::bind(&BasicControlsNode::processBoxClick, this, std::placeholders::_1));
 
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-    // Subscribe to feedback topic and listen to IMF message type
+    // Subscribe to feedback topic and listen to IMF message type queue size is 10, meaning 10 messages can be buffered if not processed immediately.
     feedback_subscription_ = this->create_subscription<visualization_msgs::msg::InteractiveMarkerFeedback>(
         "basic_controls/feedback", 10,
         std::bind(&BasicControlsNode::processBoxClick, this, std::placeholders::_1));
@@ -139,8 +142,8 @@ namespace interactive_marker_tutorials
   }
   void BasicControlsNode::createGridOfBoxes()
   {
-    const int rows = 1;
-    const int cols = 1;
+    const int rows = 2;
+    const int cols = 2;
     const double spacing = 2.0;
     int marker_index = 0; // Add an index to ensure unique names even for identical positions
 
@@ -150,6 +153,7 @@ namespace interactive_marker_tutorials
       {
         tf2::Vector3 position(i * spacing, j * spacing, 0);
         std::string marker_name = "box_marker_" + std::to_string(marker_index++);
+
         createBoxMarker(position, marker_name);
       }
     }
@@ -196,47 +200,41 @@ namespace interactive_marker_tutorials
     int_marker.controls.push_back(button_control); // Add the control to the interactive marker
 
     // Insert the marker into the server
-    RCLCPP_INFO(get_logger(), "before InteractiveMarkerServer contains %zu markers.", server_->size());
-    server_->insert(int_marker);
-
+    RCLCPP_INFO(get_logger(), "Before insertion:InteractiveMarkerServer contains %zu markers.", server_->size());
+    server_->insert(int_marker, std::bind(&BasicControlsNode::processBoxClick, this, std::placeholders::_1));
     RCLCPP_DEBUG(get_logger(), "Inserting marker '%s' into server...", int_marker.name.c_str());
-    visualization_msgs::msg::InteractiveMarker check_marker;
-    if (!server_->get(int_marker.name, check_marker))
-    {
-      RCLCPP_ERROR(get_logger(), "Failed to retrieve marker '%s' after insertion.", int_marker.name.c_str());
-    }
-
     // Bind the callback for the box click
-    RCLCPP_DEBUG(get_logger(), "Binding callback to marker: %s", int_marker.name.c_str());
-    server_->setCallback(int_marker.name, std::bind(&BasicControlsNode::processBoxClick, this, std::placeholders::_1)); // Callback binding
-    RCLCPP_DEBUG(get_logger(), "Callback bound to marker: %s", int_marker.name.c_str());
-
+    // server_->setCallback(int_marker.name, std::bind(&BasicControlsNode::processBoxClick, this, std::placeholders::_1)); // Callback binding
+    RCLCPP_INFO(get_logger(), "Callback bound to marker '%s' successfully.", marker_name.c_str());
     // Apply the changes to the server
+    RCLCPP_INFO(get_logger(), "Before applying changes: InteractiveMarkerServer contains %zu markers.", server_->size());
     server_->applyChanges();
-    RCLCPP_INFO(get_logger(), "after InteractiveMarkerServer contains %zu markers.", server_->size());
-    RCLCPP_DEBUG(get_logger(), "Marker '%s' inserted and changes applied to InteractiveMarkerServer.", int_marker.name.c_str());
-  }
 
+    RCLCPP_INFO(get_logger(), "After InteractiveMarkerServer contains %zu markers.", server_->size());
+    RCLCPP_DEBUG(get_logger(), "Marker '%s' inserted and changes applied to InteractiveMarkerServer.", int_marker.name.c_str());
+
+    // Retrieve marker information after applying changes
+    visualization_msgs::msg::InteractiveMarker retrieved_marker;
+    if (server_->get(marker_name, retrieved_marker))
+    {
+      RCLCPP_INFO(get_logger(), "Retrieved marker '%s' details:", marker_name.c_str());
+      RCLCPP_INFO(get_logger(), "Position: x = %.2f, y = %.2f, z = %.2f",
+                  retrieved_marker.pose.position.x, retrieved_marker.pose.position.y, retrieved_marker.pose.position.z);
+      RCLCPP_INFO(get_logger(), "Scale: %.2f", retrieved_marker.scale);
+      RCLCPP_INFO(get_logger(), "Number of controls: %zu", retrieved_marker.controls.size());
+    }
+    else
+    {
+      RCLCPP_WARN(get_logger(), "Failed to retrieve marker '%s' from InteractiveMarkerServer.", marker_name.c_str());
+    }
+  }
   void BasicControlsNode::processBoxClick(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback)
   {
     RCLCPP_DEBUG(get_logger(), "Received feedback: %s with event type: %d", feedback->marker_name.c_str(), feedback->event_type);
-
-    switch (feedback->event_type)
+    if (feedback->event_type == visualization_msgs::msg::InteractiveMarkerFeedback::BUTTON_CLICK)
     {
-    case visualization_msgs::msg::InteractiveMarkerFeedback::BUTTON_CLICK:
-      RCLCPP_INFO(get_logger(), "Marker clicked: %s", feedback->marker_name.c_str());
-      // Proceed with marker color change
+      RCLCPP_INFO(this->get_logger(), "Button clicked on marker: %s", feedback->marker_name.c_str());
       changeMarkerColor(feedback->marker_name, 1.0f, 0.0f, 0.0f); // Change to red
-      break;
-    case visualization_msgs::msg::InteractiveMarkerFeedback::POSE_UPDATE:
-      RCLCPP_INFO(get_logger(), "Marker pose updated: %s", feedback->marker_name.c_str());
-      break;
-    case visualization_msgs::msg::InteractiveMarkerFeedback::MENU_SELECT:
-      RCLCPP_INFO(get_logger(), "Menu item selected for marker: %s", feedback->marker_name.c_str());
-      break;
-    default:
-      RCLCPP_WARN(get_logger(), "Unexpected event type: %d", feedback->event_type);
-      break;
     }
   }
   void BasicControlsNode::changeMarkerColor(const std::string &marker_name, float r, float g, float b)
@@ -246,26 +244,29 @@ namespace interactive_marker_tutorials
     if (!server_->get(marker_name, int_marker))
     {
       RCLCPP_WARN(get_logger(), "Marker '%s' not found!", marker_name.c_str());
+      RCLCPP_WARN(get_logger(), "Failed to find marker '%s' in server. Current server size: %zu", marker_name.c_str(), server_->size());
       return; // Exit if the marker isn't found
     }
 
     for (auto &control : int_marker.controls)
     {
-      for (auto &marker : control.markers)
+      if (control.interaction_mode == visualization_msgs::msg::InteractiveMarkerControl::BUTTON)
       {
-        marker.color.r = r;
-        marker.color.g = g;
-        marker.color.b = b;
-        marker.color.a = 1.0f; // Ensure the marker remains visible
+        for (auto &marker : control.markers)
+        {
+          marker.color.r = r;
+          marker.color.g = g;
+          marker.color.b = b;
+          marker.color.a = 1.0f; // Ensure the marker remains visible
+        }
       }
     }
     server_->insert(int_marker);
     server_->applyChanges();
-
     RCLCPP_INFO(get_logger(), "Color changed for marker: %s", marker_name.c_str());
   }
 }
 #include <pluginlib/class_list_macros.hpp>
 PLUGINLIB_EXPORT_CLASS(interactive_marker_tutorials::BasicControlsPanel, rviz_common::Panel)
 
-// start  tuseday lasssssssfgdfg
+// st df

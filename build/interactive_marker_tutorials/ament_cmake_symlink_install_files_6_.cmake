@@ -1,1 +1,0 @@
-ament_cmake_symlink_install_files("/home/ravik/ros2_rviz/src/interactive_marker_tutorials" FILES "/opt/ros/rolling/share/ament_cmake_core/cmake/environment_hooks/environment/ament_prefix_path.sh" "DESTINATION" "share/interactive_marker_tutorials/environment")

@@ -4,9 +4,8 @@
 #include "interactive_markers/interactive_marker_server.hpp"
 #include "interactive_markers/menu_handler.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include "tf2/LinearMath/Transform.h"
-#include "tf2/LinearMath/Quaternion.h"
-#include "tf2/LinearMath/Vector3.h"
+#include "geometry_msgs/msg/transform_stamped.hpp"
+#include "geometry_msgs/msg/quaternion.hpp"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include <tf2_ros/transform_broadcaster.h>
 #include <rviz_common/panel.hpp>
@@ -16,10 +15,9 @@
 #include "visualization_msgs/msg/interactive_marker_feedback.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 
-#include "rviz_common/panel.hpp" // Include for RViz2 panel
-#include <QPushButton>           // Include for UI controls in the panel
-#include <QVBoxLayout>           // Include for layout management
-#include <QLineEdit>             // Include for text input fields
+#include <QPushButton> // Include for UI controls in the panel
+#include <QVBoxLayout> // Include for layout management
+#include <QLineEdit>   // Include for text input fields
 
 namespace interactive_marker_tutorials
 {
@@ -33,6 +31,7 @@ namespace interactive_marker_tutorials
   public:
     BasicControlsPanel(QWidget *parent = nullptr);
     ~BasicControlsPanel();
+
     void setBasicControlsNode(BasicControlsNode *node);
 
   protected:
@@ -55,6 +54,7 @@ namespace interactive_marker_tutorials
   {
   public:
     explicit BasicControlsNode(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
+
     ~BasicControlsNode() = default;
 
     inline void applyChanges()
@@ -65,7 +65,6 @@ namespace interactive_marker_tutorials
     void createGridOfBoxes();
     void createBoxMarker(const tf2::Vector3 &position, const std::string &marker_name);
 
-    void make6DofMarker(bool fixed, unsigned int interaction_mode, const tf2::Vector3 &position, bool show_6dof);
 
     // New method to publish frame transformation
     void publishFrameTransformation(const std::string &frame_id, const std::string &parent_frame_id);         // This method periodically broadcasts transform data for moving and rotating frames
@@ -73,14 +72,15 @@ namespace interactive_marker_tutorials
     void handleMenuSelect(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback);
     void changeMarkerColor(const std::string &marker_name, float r, float g, float b);
 
-    std::unique_ptr<interactive_markers::InteractiveMarkerServer> server_;                                      // A unique pointer to an InteractiveMarkerServer
-    interactive_markers::MenuHandler menu_handler_;                                                             // Instance of MenuHandler for marker context menu interactions
-    std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;                                             // TransformBroadcaster for sending transform updates
-    rclcpp::TimerBase::SharedPtr frame_timer_;                                                                  // Timer for periodic updates
-    rclcpp::Subscription<visualization_msgs::msg::InteractiveMarkerFeedback>::SharedPtr feedback_subscription_; 
+  private:
+    std::unique_ptr<interactive_markers::InteractiveMarkerServer> server_; // A unique pointer to an InteractiveMarkerServer
+    interactive_markers::MenuHandler menu_handler_;                        // Instance of MenuHandler for marker context menu interactions
+    std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;        // TransformBroadcaster for sending transform updates
+    rclcpp::TimerBase::SharedPtr frame_timer_;                             // Timer for periodic updates
+    rclcpp::Subscription<visualization_msgs::msg::InteractiveMarkerFeedback>::SharedPtr feedback_subscription_;
   };
 
 } // namespace interactive_marker_tutorials
 #endif // BASIC_CONTROLS_HPP
 
-// skjdk gfhfg fgdef s
+// dfgfdg
